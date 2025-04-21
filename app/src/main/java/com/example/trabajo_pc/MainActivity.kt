@@ -5,14 +5,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.remember
@@ -24,171 +24,202 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
-import kotlin.random.Random
-import com.example.trabajo_pc.ui.theme.Trabajo_PcTheme
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.shadow
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            Trabajo_PcTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    JuegoTresEnRayaConIA(
+            JuegoCuatroEnRaya()
 
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+
         }
     }
 }
 
 @Composable
-fun JuegoTresEnRayaConIA(modifier: Modifier = Modifier) {
+fun JuegoCuatroEnRaya() {
     var tablero by remember { mutableStateOf(MutableList(6) { MutableList(7) { "" } }) }
     var turnoX by remember { mutableStateOf(true) }
     var ganador by remember { mutableStateOf<String?>(null) }
 
-    // Función para verificar si hay un ganador
-    fun verificarGanador(tablero: List<List<String>>, n: Int, m: Int): String? {
-        val lineas = mutableListOf<List<String>>()
-
-        // Filas
-        for (i in 0 until n) {
-            lineas.add(tablero[i])
-        }
-
-        // Columnas
-        for (j in 0 until m) {
-            val columna = mutableListOf<String>()
-            for (i in 0 until n) {
-                columna.add(tablero[i][j])
-            }
-            lineas.add(columna)
-        }
-
-        // Diagonales
-        for (i in 0 until n - 3) {
-            for (j in 0 until m - 3) {
-                val diagonal1 = mutableListOf<String>()
-                val diagonal2 = mutableListOf<String>()
-                for (k in 0 until 4) {
-                    diagonal1.add(tablero[i + k][j + k]) // Diagonal principal
-                    diagonal2.add(tablero[i + k][j + 3 - k]) // Diagonal secundaria
-                }
-                lineas.add(diagonal1)
-                lineas.add(diagonal2)
-            }
-        }
-
-        // Verificar si hay una línea ganadora
-        for (linea in lineas) {
-            if (linea.all { it == "X" }) return "X"
-            if (linea.all { it == "O" }) return "O"
-        }
-
-        return null
-    }
-    // Función para obtener la primera fila vacía en una columna (Esta es la más importante pana para que la IA y el jugador vayan hacía la ultima fila)
+    // Función para encontrar fila vacía en una columna
     fun obtenerFilaDisponible(columna: Int): Int? {
-        for (i in 5 downTo 0) { // Comienza desde la fila más baja (6) hacia arriba
-            if (tablero[i][columna] == "") {
-                return i
-            }
+        for (i in 5 downTo 0) {
+            if (tablero[i][columna] == "") return i
         }
         return null
     }
-    // Función para realizar la jugada de la IA (elige una celda vacía aleatoria esta por ahora como IA, pero creo que se puede mejorar haciendo que seleccione una o dos celdas después del movimiento de uno)
-    fun jugadaIA(tablero: MutableList<MutableList<String>>, n: Int, m: Int) {
-        val celdasVacias = mutableListOf<Pair<Int, Int>>()
 
-        // Buscar todas las celdas vacías y su fila correspondiente
-        for (j in 0 until m) { // Recorremos las columnas
-            val filaDisponible = obtenerFilaDisponible(j) // Obtenemos la primera fila vacía de cada columna
-            if (filaDisponible != null) {
-                celdasVacias.add(Pair(filaDisponible, j)) // Si hay fila vacía, la agregamos a la lista
-            }
+    // IA básica (elige columna aleatoria válida)
+    fun jugadaIA() {
+        val opciones = (0..6).mapNotNull { col ->
+            obtenerFilaDisponible(col)?.let { fila -> fila to col }
         }
-
-        if (celdasVacias.isNotEmpty()) {
-            // La IA selecciona una celda vacía aleatoria
-            val (i, j) = celdasVacias[Random.nextInt(celdasVacias.size)]
-            tablero[i][j] = "O" // Coloca su ficha en la posición seleccionada
-
-            // Verificar si la IA ha ganado después de su jugada
-            ganador = verificarGanador(tablero, n, m)
+        if (opciones.isNotEmpty()) {
+            val (fila, col) = opciones.random()
+            tablero[fila][col] = "O"
+            ganador = verificarGanador(tablero)
         }
     }
-
-
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        for (i in 0 until 6) {
+        // Tablero
+        for (fila in 0 until 6) {
             Row {
-                for (j in 0 until 7) {
-                    val valor = tablero[i][j]
-                    Box(
-                        modifier = Modifier
-                            .size((300 / 7).dp)
-                            .padding(4.dp)
-                            .border(2.dp, Color.Black)
-                            .background(Color.White)
-                            .clickable(enabled = valor.isEmpty() && ganador == null && turnoX) {
-                                val filaDisponible = obtenerFilaDisponible(j)
-                                if (filaDisponible != null) {
-                                    // Colocar la ficha en la fila disponible de la columna seleccionada
-                                    tablero[filaDisponible][j] = "X"
-                                    ganador = verificarGanador(tablero, 6, 7)
-                                    if (ganador == null) {
-                                        turnoX = false
-                                        // aqui se pone en el tuerno para que después de uno hacerle la ia haga un movimiento
-                                        jugadaIA(tablero, 6, 7)
-                                        turnoX = true
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = valor,
-                            fontSize = 32.sp,
-                            color = if (valor == "X") Color.Red else Color.Blue
-                        )
+                for (col in 0 until 7) {
+                    val valor = tablero[fila][col]
+                    CeldaTablero(valor) {
+                        val filaDisponible = obtenerFilaDisponible(col)
+                        if (filaDisponible != null && ganador == null && turnoX) {
+                            tablero[filaDisponible][col] = "X"
+                            ganador = verificarGanador(tablero)
+                            if (ganador == null) {
+                                turnoX = false
+                                jugadaIA()
+                                turnoX = true
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
+        // Resultado o turno
         if (ganador != null) {
-            Text(text = "¡Ganó $ganador!", fontSize = 24.sp, color = Color.Green)
+            Text("¡Ganó $ganador!", fontSize = 45.sp, color = Color.Green)
         } else {
-            Text(text = "Turnooooo: ${if (turnoX) "X" else "O"}", fontSize = 20.sp)
+            Text("Turno: ${if (turnoX) "X" else "O"}", fontSize = 20.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        // solo resetea el tablero y los puntajes junt0o al turno ganador
+
         Button(onClick = {
             tablero = MutableList(6) { MutableList(7) { "" } }
-            turnoX = true
             ganador = null
+            turnoX = true
         }) {
             Text("Reiniciar")
         }
     }
 }
-@Preview(showBackground = true)
+
+fun verificarGanador(tablero: List<List<String>>): String? {
+    val filas = tablero.size
+    val columnas = tablero[0].size
+
+    val direcciones = listOf(
+        Pair(0, 1),   // →
+        Pair(1, 0),   // ↓
+        Pair(1, 1),   // ↘
+        Pair(1, -1)   // ↙
+    )
+
+    for (i in 0 until filas) {
+        for (j in 0 until columnas) {
+            val jugador = tablero[i][j]
+            if (jugador != "") {
+                for ((dx, dy) in direcciones) {
+                    var count = 1
+                    var x = i + dx
+                    var y = j + dy
+
+                    while (
+                        x in 0 until filas &&
+                        y in 0 until columnas &&
+                        y >= 0 &&
+                        tablero[x][y] == jugador
+                    ) {
+                        count++
+                        if (count == 4) return jugador
+                        x += dx
+                        y += dy
+                    }
+                }
+            }
+        }
+    }
+
+    return null
+}
+
+
 @Composable
-fun Tabla3x3Preview() {
-    Trabajo_PcTheme {
-        JuegoTresEnRayaConIA()
+fun FichaRoja() {
+    Box(
+        modifier = Modifier
+            .size(35.dp) // Un poco más grande
+            .background(
+                brush = Brush.radialGradient( // Degradado radial para más profundidad
+                    colors = listOf(Color(0xFFE57373), Color.Red),
+                    center = Offset(50f, 50f),
+                    radius = 24f
+                ),
+                shape = CircleShape
+            )
+            .border(2.dp, Color(0xFFB71C1C), CircleShape) // Borde más oscuro
+            .shadow(elevation = 1.dp, shape = CircleShape) // Sombra sutil
+            .padding(3.dp) // Un poco de espacio interior
+    )
+}
+
+@Composable
+fun FichaAmarilla() {
+    Box(
+        modifier = Modifier
+            .size(35.dp) // Igual tamaño que la roja para consistencia
+            .background(
+                brush = Brush.radialGradient( // Mismo tipo de degradado
+                    colors = listOf(Color(0xFFFFF176), Color.Yellow),
+                    center = Offset(50f, 50f),
+                    radius = 24f
+                ),
+                shape = CircleShape
+            )
+            .border(2.dp, Color(0xFFF9A825), CircleShape) // Borde más intenso
+            .shadow(elevation = 1.dp, shape = CircleShape) // Misma sombra
+            .padding(3.dp) // Mismo padding
+    )
+}
+
+@Composable
+fun CeldaTablero(valor: String, onClick: () -> Unit) {
+    val colorFondo = Color(0xFFBCAAA4) // café claro
+    val colorBorde = Color(0xFF6D4C41) // café oscuro
+    val radio = 12.dp
+
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .padding(4.dp)
+            .background(colorFondo)
+            .border(2.dp, colorBorde, RoundedCornerShape(radio))
+            .clickable(enabled = valor.isEmpty()) {
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        when (valor) {
+            "X" -> FichaRoja()
+            "O" -> FichaAmarilla()
+        }
     }
 }
