@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.material3.Button
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 
@@ -35,14 +35,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.shadow
 
 
+import android.media.MediaPlayer
+import androidx.compose.ui.platform.LocalContext
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             JuegoCuatroEnRaya()
-
-
         }
     }
 }
@@ -53,7 +55,6 @@ fun JuegoCuatroEnRaya() {
     var turnoX by remember { mutableStateOf(true) }
     var ganador by remember { mutableStateOf<String?>(null) }
 
-    // Función para encontrar fila vacía en una columna
     fun obtenerFilaDisponible(columna: Int): Int? {
         for (i in 5 downTo 0) {
             if (tablero[i][columna] == "") return i
@@ -61,7 +62,6 @@ fun JuegoCuatroEnRaya() {
         return null
     }
 
-    // IA básica (elige columna aleatoria válida)
     fun jugadaIA() {
         val opciones = (0..6).mapNotNull { col ->
             obtenerFilaDisponible(col)?.let { fila -> fila to col }
@@ -72,6 +72,9 @@ fun JuegoCuatroEnRaya() {
             ganador = verificarGanador(tablero)
         }
     }
+
+
+
 
     Column(
         modifier = Modifier
@@ -103,21 +106,43 @@ fun JuegoCuatroEnRaya() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Resultado o turno
+        // Mensaje de resultado o turno
         if (ganador != null) {
-            Text("¡Ganó $ganador!", fontSize = 45.sp, color = Color.Green)
+            Text(
+                text = "¡${ganador} ha ganado!",
+                fontSize = 30.sp,
+                color = if (ganador == "Jugador Rojo") Color.Red else Color(0xFFFFD700)
+            )
         } else {
-            Text("Turno: ${if (turnoX) "X" else "O"}", fontSize = 20.sp)
+            Text(
+                text = "Turno: ${if (turnoX) "Jugador Rojo" else "Jugador Amarillo"}",
+                fontSize = 20.sp
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            tablero = MutableList(6) { MutableList(7) { "" } }
-            ganador = null
-            turnoX = true
-        }) {
-            Text("Reiniciar")
+        Box(
+            modifier = Modifier
+                .width(150.dp)
+                .height(48.dp)
+                .background(
+                    color = Color(0xFF5D4037),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .clickable {
+                    tablero = MutableList(6) { MutableList(7) { "" } }
+                    ganador = null
+                    turnoX = true
+                }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Reiniciar",
+                color = Color.White,
+                fontSize = 16.sp
+            )
         }
     }
 }
@@ -127,10 +152,10 @@ fun verificarGanador(tablero: List<List<String>>): String? {
     val columnas = tablero[0].size
 
     val direcciones = listOf(
-        Pair(0, 1),   // →
-        Pair(1, 0),   // ↓
-        Pair(1, 1),   // ↘
-        Pair(1, -1)   // ↙
+        Pair(0, 1),   // Horizontal →
+        Pair(1, 0),   // Vertical ↓
+        Pair(1, 1),   // Diagonal ↘
+        Pair(1, -1)    // Diagonal ↙
     )
 
     for (i in 0 until filas) {
@@ -142,14 +167,15 @@ fun verificarGanador(tablero: List<List<String>>): String? {
                     var x = i + dx
                     var y = j + dy
 
-                    while (
-                        x in 0 until filas &&
-                        y in 0 until columnas &&
-                        y >= 0 &&
-                        tablero[x][y] == jugador
-                    ) {
+                    while (x in 0 until filas && y in 0 until columnas && y >= 0 && tablero[x][y] == jugador) {
                         count++
-                        if (count == 4) return jugador
+                        if (count == 4) {
+                            return when (jugador) {
+                                "X" -> "Jugador Rojo"
+                                "O" -> "Jugador Amarillo"
+                                else -> null
+                            }
+                        }
                         x += dx
                         y += dy
                     }
@@ -157,27 +183,25 @@ fun verificarGanador(tablero: List<List<String>>): String? {
             }
         }
     }
-
     return null
 }
-
 
 @Composable
 fun FichaRoja() {
     Box(
         modifier = Modifier
-            .size(35.dp) // Un poco más grande
+            .size(35.dp)
             .background(
-                brush = Brush.radialGradient( // Degradado radial para más profundidad
+                brush = Brush.radialGradient(
                     colors = listOf(Color(0xFFE57373), Color.Red),
                     center = Offset(50f, 50f),
                     radius = 24f
                 ),
                 shape = CircleShape
             )
-            .border(2.dp, Color(0xFFB71C1C), CircleShape) // Borde más oscuro
-            .shadow(elevation = 1.dp, shape = CircleShape) // Sombra sutil
-            .padding(3.dp) // Un poco de espacio interior
+            .border(2.dp, Color(0xFFB71C1C), CircleShape)
+            .shadow(elevation = 1.dp, shape = CircleShape)
+            .padding(3.dp)
     )
 }
 
@@ -185,26 +209,27 @@ fun FichaRoja() {
 fun FichaAmarilla() {
     Box(
         modifier = Modifier
-            .size(35.dp) // Igual tamaño que la roja para consistencia
+            .size(35.dp)
             .background(
-                brush = Brush.radialGradient( // Mismo tipo de degradado
+                brush = Brush.radialGradient(
                     colors = listOf(Color(0xFFFFF176), Color.Yellow),
                     center = Offset(50f, 50f),
                     radius = 24f
                 ),
                 shape = CircleShape
             )
-            .border(2.dp, Color(0xFFF9A825), CircleShape) // Borde más intenso
-            .shadow(elevation = 1.dp, shape = CircleShape) // Misma sombra
-            .padding(3.dp) // Mismo padding
+            .border(2.dp, Color(0xFFF9A825), CircleShape)
+            .shadow(elevation = 1.dp, shape = CircleShape)
+            .padding(3.dp)
     )
 }
 
 @Composable
 fun CeldaTablero(valor: String, onClick: () -> Unit) {
-    val colorFondo = Color(0xFFBCAAA4) // café claro
-    val colorBorde = Color(0xFF6D4C41) // café oscuro
+    val colorFondo = Color(0xFFBCAAA4)
+    val colorBorde = Color(0xFF6D4C41)
     val radio = 12.dp
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -213,6 +238,11 @@ fun CeldaTablero(valor: String, onClick: () -> Unit) {
             .background(colorFondo)
             .border(2.dp, colorBorde, RoundedCornerShape(radio))
             .clickable(enabled = valor.isEmpty()) {
+                MediaPlayer.create(context, R.raw.ficha_colocada).apply {
+                    setVolume(1f, 1f)
+                    setOnCompletionListener { it.release() }
+                    start()
+                }
                 onClick()
             },
         contentAlignment = Alignment.Center
